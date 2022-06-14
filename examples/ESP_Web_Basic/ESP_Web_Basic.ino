@@ -7,8 +7,8 @@
  
 #include "ESP_Web_Tool.h"
 
-const char* hssid      = "JioFiber-Home-2G";
-const char* hpassword  = "iot19internet9229";
+const char* hssid      = "xxxxxxxxxxxx";
+const char* hpassword  = "000000000000";
 
 const char* ssid1       = "ESP32Server";
 const char* password1   = "n1234567890";
