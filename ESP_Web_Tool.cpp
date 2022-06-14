@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "ESP_Web_Tool.h"
+#include "Upload_Page.h"
 
 ESP_Webtool::ESP_Webtool():server(80){
   using namespace std::placeholders;
@@ -106,12 +107,32 @@ bool ESP_Webtool::handleFileRead(String path) { // send the right file to the cl
     return true;
   }
   Serial.println("\tFile Not Found");
+
+  if(path.equals("/index.html")){
+      server.sendHeader("Connection", "close");
+      //server.send(200, "text/html", index_html);
+      server.send(200, "text/html", upload_page);
+      return true; 
+  }
   return false;                                         // If the file doesn't exist, return false
 }
 
 void ESP_Webtool::uploadResp(void) {  
+  const char upload_ok[] PROGMEM = R"rawliteral(
+    <!DOCTYPE html>
+    <html>
+    <body>
+        <p>ESP  Upload Success</p>
+    <script>
+        window.onload = function() { 
+            if(!alert("ESP Upload Success Goto Main Page")) document.location = "/";
+        };
+    </script>
+    </body>
+    </html>)rawliteral";
+    
   server.sendHeader("Connection", "close");
-  server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+  server.send(200, "text/html", (Update.hasError()) ? "ESP Firmware Upload Failed" : upload_ok);
   delay(1000);
   if(restart){
     ESP.restart();
