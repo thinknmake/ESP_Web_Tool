@@ -1,11 +1,8 @@
-const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <title>ESP Web Tool</title>
-    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
-
     <style>
       html {font-family: Arial; display: inline-block; text-align: center;}
       .content {padding: 8px;margin:0px 0px;}
@@ -22,13 +19,14 @@ const char index_html[] PROGMEM = R"rawliteral(
         border:0;
         padding: 10px 25px;
         margin: 4px 2px;
-        width:50%;
+        width:65%;
+        border-radius: 25px;
       }
       
       .button {
         border: none;
         color: white;
-          padding: 10px 5px;        
+        padding: 10px 5px;        
         margin: 4px 2px;
         text-align: center;
         text-decoration: none;
@@ -47,10 +45,17 @@ const char index_html[] PROGMEM = R"rawliteral(
         clear:both;
       }
       
-      .button1 {background-color: #4CAF50;width: 85px;} /* Green */
-        .button2 {background-color: #FF0500;width: 120px;}
+      .button1 {background-color: #e3b50f;width: 20%;border-radius: 25px;} /* Green */
+      .button2 {background-color: #FF0500;width: 20%;border-radius: 25px;}
       
-      .pclass{ background-color: #DCDCDC; black;color:black;height: 300px;margin:5px;border-radius: 5px;text-align: left;font-size: 1.0rem;overflow-y: scroll;}
+      .pclass{ background-color: #DCDCDC; 
+               color:black;
+               height: 400px;
+               margin:5px;border-radius: 5px;
+               text-align: left;
+               font-size: 1.0rem;
+               overflow-y: scroll;
+            }
     
       .hsection {
         background-color: #04456f;
@@ -67,34 +72,22 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body style="margin:0px 0px;">
   <div class="content" >
     <div class="card" >   
-      <div class="hsection">
-        <h2>ESP Web Tool</h2>
-        <hr />
+    
+      <div style="padding-top: 5px;">
+        <h2>ESP Web Terminal</h2>
       </div>
-      
-      <form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>
-        <div align="center" style="padding: 5px 5px;">
-          <input type='file' name='update' id='file' onchange='sub(this)' style="display:none;"> </input>
-          <label id='file-input' for='file' style="padding: 9px 5%;">Choose Firmware file</label>
-          <input type='submit' class="button button2" value='Upload'>
-        </div>
-        
-        <div id='prg'>
-        
-        </div>
-        
-        <div id='prgbar' >
-          <div id='bar'></div>
-        </div>        
-      </form>
-      
       <div class="pclass">
         <p id="edata" placeholder="Recived a message..."></p>
       </div>
-      <div align="left" style="padding: 10px 5px;"> 
-        <input type="text" id="message" placeholder="Type a message..." autocomplete="off" style="height: 21px;" />
-        <button type="submit" class="button button1" onclick="onPress()">Send</button>   
+      <div  style="padding: 10px 5px;"> 
+        <input  type="text" id="message" placeholder="Type a message..." autocomplete="off" style="height: 21px;" />
+        <button  type="submit" class="button button1" onclick="onPress()">Send</button>   
       </div>
+      <br>
+      <a href="./">Home</a>
+      <a href="./ota">OTA </a> 
+       
+      <br>
       <br>
     </div>
   </div>
@@ -156,7 +149,8 @@ function onMessage(evt) {
     // Print out our received message
     var time = new Date().toLocaleTimeString('en-US',{ hour12: false });      
     console.log("Received: " + evt.data);
-    document.getElementById("edata").innerHTML= time +" -> "+evt.data + "<br>" + document.getElementById("edata").innerHTML;
+    document.getElementById("edata").innerHTML=  time +" -> "+evt.data + "<br>" + document.getElementById("edata").innerHTML   ;
+    //document.getElementById("edata").innerHTML=  document.getElementById("edata").innerHTML + "<br>" + time +" -> "+evt.data ;
    
 }
 
@@ -169,53 +163,20 @@ function onError(evt) {
 function doSend(message) {
     
   console.log("Sending: " + message);
-    websocket.send(message);
+  websocket.send(message);
 }
 
 // Called whenever the HTML button is pressed
 function onPress() {
-    var mmssgg = document.getElementById("message").value;
+ var mmssgg = document.getElementById("message").value;
   if(mmssgg.length>0){
     doSend(mmssgg);
     document.getElementById("message").value="";
   }
 }
 
-function sub(obj){
-  var fileName = obj.value.split('\\\\');
-  document.getElementById('file-input').innerHTML = '   '+ fileName[fileName.length-1];
-};
-$('form').submit(function(e){
-  e.preventDefault();
-  var form = $('#upload_form')[0];
-  var data = new FormData(form);
-  $.ajax({
-    url: '/update',
-    type: 'POST',
-    data: data,
-    contentType: false,
-    processData:false,
-    xhr: function() {
-      var xhr = new window.XMLHttpRequest();
-      xhr.upload.addEventListener('progress', function(evt) {
-        if (evt.lengthComputable) {
-          var per = evt.loaded / evt.total;
-          $('#prg').html('Progress: ' + Math.round(per*100) + '%');
-          $('#bar').css('width',Math.round(per*100) + '%');
-        }
-      }, false);
-      return xhr;
-    },
-    success:function(d, s) {
-      console.log('success!')
-    },
-    error: function (a, b, c) {
-    }
-  });
-});
 // Call the init function as soon as the page loads
 window.addEventListener("load", init, false);
 
 </script>
 </body>
-</html>)rawliteral";

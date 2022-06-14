@@ -7,34 +7,46 @@
 #ifndef _ESP_WEB_TOOL_
 #define _ESP_WEB_TOOL_
 
+#include <Arduino.h>
+#include <FS.h>
+#include <WebSocketsServer.h>
+
 #ifdef ESP8266
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
-#include <WebSocketsServer.h>
 #include <ESP8266WiFi.h>
 #elif ESP32
 #include <WebServer.h>
-#include <WebSocketsServer.h>
 #include <Update.h>
+#include <SPIFFS.h>
 #endif
 
-#include <Arduino.h>
+#define CALLBACK_SIGNATURE std::function<void(uint8_t*,unsigned int)> callback
 
 class ESP_Webtool
 {
         public: 
             ESP_Webtool();
             ESP_Webtool(uint16_t port,uint16_t port1);  
-            
+            CALLBACK_SIGNATURE;
             void print(String logs);
             void sock_callback();   
             void setup();
             void loop(); 
-            
-            void root_page(void);
+            ESP_Webtool& setCallback(CALLBACK_SIGNATURE);
+            void update_page(void);
+            void terminal_page(void);
+            void notFound(void);
+            String getContentType(String filename);
+            bool handleFileRead(String path);
             void uploadResp(void);
             void handleUpload(void);
             void onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * payload,size_t length);
+            void listFiles(void);
+            File fsUploadFile;
+    #ifdef ESP32
+            void  listDir(fs::FS &fs, const char * dirname, uint8_t levels);
+    #endif
 
     protected:
     #ifdef ESP8266
@@ -46,7 +58,7 @@ class ESP_Webtool
             WebSocketsServer *webSocket;
             boolean fs_enable=false;
             boolean restart  = false;
-            boolean websockisConnected = true; 
+            boolean websockisConnected = true;
 };
 
 #endif
