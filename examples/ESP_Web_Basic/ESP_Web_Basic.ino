@@ -7,33 +7,43 @@
  
 #include "ESP_Web_Tool.h"
 
-const char* hssid      = "xxxxxxxxxxxx";
-const char* hpassword  = "000000000000";
+#define     LED         2
+
+const char* hssid       = "xxxxxxxxxxxx";
+const char* hpassword   = "000000000000";
 
 const char* ssid1       = "ESP32Server";
 const char* password1   = "n1234567890";
-
-#define LED 2
-
-long lastmillis=0;
-long blink_delay=1000;
-
-//ESP_Webtool tool(80,1337);
-
-ESP_Webtool tool;
-int counter = 0;
-
-void tool_callback(uint8_t* payload,unsigned int len){
-  Serial.println("In Main Code");
-  Serial.println((char*)payload);
-}
+long        lastmillis  = 0;
+long        blink_delay = 1000;
+int counter             = 0;
+ESP_Webtool   tool;
 
 void setup(){
     Serial.begin(115200); // Used for messages and the C array generator
     delay(100);
-    Serial.println("WebTool test!");
-    WiFi.begin(hssid, hpassword);
+    Serial.println("ESP WebTool test!");
+    Serial.println("Setup"); 
+    setup_wifi();
+    tool.setup();
+    tool.setCallback(tool_callback);
+    pinMode(LED, OUTPUT);    
+    Serial.println("Loop");
+    tool.listFiles();
+}
+
+void loop(){
+    tool.loop();
+    if(millis()-lastmillis > blink_delay){
+        digitalWrite(LED, !digitalRead(LED));
+        logs("Board LED " +String(digitalRead(LED)?"OFF":"ON ") + " Request: " +String(counter++));
+        lastmillis = millis();
+    }
+}
+
+void setup_wifi(){
     int i =0;
+    WiFi.begin(hssid, hpassword);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -55,28 +65,14 @@ void setup(){
     Serial.print("AP IP address: ");
     Serial.println(myIP);
     Serial.println(); 
-    Serial.println("Setup"); 
-    tool.setup();
-    tool.setCallback(tool_callback);
-    pinMode(LED, OUTPUT);    
-    Serial.println("Loop");
-    if (!SPIFFS.begin()) {
-    Serial.println("SPIFFS initialisation failed!");
-    while (1) yield(); // Stay here twiddling thumbs waiting
-  }
-   tool.listFiles();
-}
-
-void loop(){
-    tool.loop();
-    if(millis()-lastmillis > blink_delay){
-        digitalWrite(LED, !digitalRead(LED));
-        logs("Board LED " +String(digitalRead(LED)?"OFF":"ON ") + " Request: " +String(counter++));
-        lastmillis = millis();
-    }
 }
 
 void logs(String log_str){
   Serial.println(log_str);
   tool.print(log_str);
+}
+
+void tool_callback(uint8_t* payload,unsigned int len){
+  Serial.println("In Main Code");
+  Serial.println((char*)payload);
 }

@@ -27,6 +27,9 @@ void ESP_Webtool::setup(){
   server.begin();   
   webSocket->begin();
   webSocket->onEvent(std::bind(&ESP_Webtool::onWebSocketEvent,this,_1,_2,_3,_4));
+  if (!SPIFFS.begin()) {
+      Serial.println("SPIFFS initialisation failed!");
+  }
 } 
 
 void ESP_Webtool::loop(){
@@ -118,7 +121,7 @@ bool ESP_Webtool::handleFileRead(String path) { // send the right file to the cl
 }
 
 void ESP_Webtool::uploadResp(void) {  
-  const char upload_ok[] PROGMEM = R"rawliteral(
+  const char upload_ok[] = R"rawliteral(
     <!DOCTYPE html>
     <html>
     <body>
