@@ -15,7 +15,7 @@ ESP_Webtool::ESP_Webtool():server(80){
 ESP_Webtool::ESP_Webtool(uint16_t port,uint16_t port1):server(port){   
   using namespace std::placeholders; 
   webSocket = new WebSocketsServer(port1);
-    setCallback(NULL);
+  setCallback(NULL);
   server.on("/ota", HTTP_GET,std::bind(&ESP_Webtool::update_page,this));
   server.on("/terminal", HTTP_GET,std::bind(&ESP_Webtool::terminal_page,this));
   server.on("/update", HTTP_POST, std::bind(&ESP_Webtool::uploadResp,this),std::bind(&ESP_Webtool::handleUpload,this));
@@ -28,9 +28,20 @@ void ESP_Webtool::setup(){
   webSocket->begin();
   webSocket->onEvent(std::bind(&ESP_Webtool::onWebSocketEvent,this,_1,_2,_3,_4));
   if (!SPIFFS.begin()) {
-      Serial.println("SPIFFS initialisation failed!");
+      logs("SPIFFS initialisation failed!");
   }
+  logs(VERSION);
 } 
+
+void ESP_Webtool::enableDebug(boolean debug){
+    this->debug = debug;
+}
+
+void ESP_Webtool::logs(String log_str){
+    if(debug){
+      Serial.println(log_str);
+    }
+}
 
 void ESP_Webtool::loop(){
   server.handleClient();
@@ -38,8 +49,10 @@ void ESP_Webtool::loop(){
 } 
 
 void ESP_Webtool::print(String logs){
-  if(websockisConnected){
-    webSocket->sendTXT(0,logs);
+  for(int i=0;i<MAX_CLIENT;i++){
+    if(client[i]){
+      webSocket->sendTXT(i,logs);
+    }
   }
 }
 
@@ -49,24 +62,26 @@ void ESP_Webtool::onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * p
   switch(type) {
     // Client has disconnected
     case WStype_DISCONNECTED:
-      Serial.printf("[%u] Disconnected!\n", client_num);
-      websockisConnected=false;
+      logs("Client :"+String(client_num) + " Disconnected!");
+      if(client_num < MAX_CLIENT)
+      client[client_num] = false;
       break;
 
     // New client has connected
     case WStype_CONNECTED:
       {
         IPAddress ip = webSocket->remoteIP(client_num);
-        Serial.printf("[%u] Connection from ", client_num);
-        Serial.println(ip.toString());
-        websockisConnected=true;
+        logs("Client :"+ String(client_num)+" Connected " );
+        logs(ip.toString());
+        if(client_num < MAX_CLIENT)
+        client[client_num] = true;
       }
       break;
 
     // Handle text messages from client
     case WStype_TEXT:
       // Print out raw message
-      Serial.printf("[%u] Received text: %s\n", client_num, payload);
+      logs("Client :"+String( client_num) + " Received text: " + String((char*)payload));
       if (callback) {
           callback(payload,length);
       }
@@ -85,7 +100,7 @@ void ESP_Webtool::onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * p
 }
 
 void ESP_Webtool::notFound(void) { 
-  Serial.println("Not Found " + server.uri());
+  logs("Not Found " + server.uri());
   if (!handleFileRead(server.uri()))   {               // send it if it exists
       server.send(404, "text/plain", "404: Not Found"); // otherwise, respond with a 404 (Not Found) error
   }
@@ -100,7 +115,7 @@ String ESP_Webtool::getContentType(String filename) { // convert the file extens
 }
 
 bool ESP_Webtool::handleFileRead(String path) { // send the right file to the client (if it exists)
-  Serial.println("handleFileRead: " + path);
+  logs("handleFileRead: " + path);
   if (path.endsWith("/")) path += "index.html";         // If a folder is requested, send the index file
   String contentType = getContentType(path);            // Get the MIME type
   if (SPIFFS.exists(path)) {                            // If the file exists
@@ -109,7 +124,7 @@ bool ESP_Webtool::handleFileRead(String path) { // send the right file to the cl
     file.close();                                       // Then close the file again
     return true;
   }
-  Serial.println("\tFile Not Found");
+  logs("\tFile Not Found");
 
   if(path.equals("/index.html")){
       server.sendHeader("Connection", "close");
@@ -149,7 +164,7 @@ void ESP_Webtool::update_page(void) {
     size_t sent = server.streamFile(file, "text/html"); // And send it to the client
     file.close();                                       // Then close the file again
   }else{
-    Serial.println("\tFile Not Found");
+    logs("\tFile Not Found");
   }
 }
 
@@ -160,7 +175,7 @@ void ESP_Webtool::terminal_page(void) {
     size_t sent = server.streamFile(file, "text/html"); // And send it to the client
     file.close();                                       // Then close the file again
   }else{
-    Serial.println("\tFile Not Found");
+    logs("\tFile Not Found");
   }
 }
 
@@ -168,16 +183,17 @@ void ESP_Webtool::handleUpload(void){
     
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
-      Serial.printf("Update: %s\n", upload.filename.c_str());
+      logs("Web Update :" + String(upload.filename.c_str()));
       String filename = upload.filename;
       if(filename.endsWith(".bin")){
         uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+        logs("Updating Firmware ...");
         print("Updating Firmware ...");
         if (!Update.begin(maxSketchSpace)) { //start with max available size
           Update.printError(Serial);
         }
       }else{
-          Serial.println("Not Bin file");
+          logs("Not Bin file");
           print("Not Bin file\n");
           if (!filename.startsWith("/")) {
             filename = "/" + filename;
@@ -200,8 +216,8 @@ void ESP_Webtool::handleUpload(void){
       String filename = upload.filename;
         if(filename.endsWith(".bin")){
           if (Update.end(true)) { //true to set the size to the current progress
-            Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-            print("Rebooting...\n");
+            logs(" Web Update Success: "+String(upload.totalSize)+" Rebooting Board...");
+            print("Rebooting Board...\n");
             restart = true;
           } else {
             Update.printError(Serial);
@@ -213,7 +229,8 @@ void ESP_Webtool::handleUpload(void){
             fsUploadFile.close();
             print("File Uploaded");
          } 
-          Serial.printf("Update Success: \n", upload.totalSize);
+ 
+          logs("Web Update Success: "+String(upload.totalSize));
           restart = false;
         }
    }
@@ -227,15 +244,15 @@ ESP_Webtool& ESP_Webtool::setCallback(CALLBACK_SIGNATURE) {
 
 #ifdef ESP8266
 void  ESP_Webtool::listFiles(void) {
-  Serial.println();
-  Serial.println("SPIFFS files found:");
+ logs("\n");
+  logs("SPIFFS files found:");
 
   fs::Dir dir = SPIFFS.openDir("/"); // Root directory
   String  line = "=====================================";
 
-  Serial.println(line);
-  Serial.println("  File name               Size");
-  Serial.println(line);
+  logs(line);
+  logs("  File name               Size");
+  logs(line);
 
   while (dir.next()) {
     String fileName = dir.fileName();
@@ -247,11 +264,11 @@ void  ESP_Webtool::listFiles(void) {
     String fileSize = (String) f.size();
     spaces = 10 - fileSize.length(); // Tabulate nicely
     while (spaces--) Serial.print(" ");
-    Serial.println(fileSize + " bytes");
+    logs(fileSize + " bytes");
   }
 
-  Serial.println(line);
-  Serial.println();
+  logs(line);
+ logs("\n");
   delay(1000);
 }
 #endif
@@ -266,23 +283,23 @@ void  ESP_Webtool::listFiles(void) {
 
 void  ESP_Webtool::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
 
-  Serial.println();
-  Serial.println("SPIFFS files found:");
+ logs("\n");
+  logs("SPIFFS files found:");
 
-  Serial.printf("Listing directory: %s\n", "/");
+  logs("Listing directory: /");
   String  line = "=====================================";
 
-  Serial.println(line);
-  Serial.println("  File name               Size");
-  Serial.println(line);
+  logs(line);
+  logs("  File name               Size");
+  logs(line);
 
   fs::File root = fs.open(dirname);
   if (!root) {
-    Serial.println("Failed to open directory");
+    logs("Failed to open directory");
     return;
   }
   if (!root.isDirectory()) {
-    Serial.println("Not a directory");
+    logs("Not a directory");
     return;
   }
 
@@ -305,14 +322,14 @@ void  ESP_Webtool::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
       String fileSize = (String) file.size();
       spaces = 10 - fileSize.length(); // Tabulate nicely
       while (spaces--) Serial.print(" ");
-      Serial.println(fileSize + " bytes");
+      logs(fileSize + " bytes");
     }
 
     file = root.openNextFile();
   }
 
-  Serial.println(line);
-  Serial.println();
+  logs(line);
+ logs("\n");
   delay(1000);
 }
 #endif

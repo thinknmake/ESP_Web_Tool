@@ -22,7 +22,8 @@
 #endif
 
 #define CALLBACK_SIGNATURE std::function<void(uint8_t*,unsigned int)> callback
-
+#define VERSION "ESP Web Tools \nDesign By N!lesh M\n Date 19/06/22"
+#define MAX_CLIENT 5
 class ESP_Webtool
 {
         public: 
@@ -43,10 +44,14 @@ class ESP_Webtool
             void handleUpload(void);
             void onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * payload,size_t length);
             void listFiles(void);
+            void enableDebug(boolean debug);
+            void logs(String log_str);
             File fsUploadFile;
+            boolean client[MAX_CLIENT];
     #ifdef ESP32
             void  listDir(fs::FS &fs, const char * dirname, uint8_t levels);
     #endif
+            boolean debug = false;    
 
     protected:
     #ifdef ESP8266
@@ -58,7 +63,6 @@ class ESP_Webtool
             WebSocketsServer *webSocket;
             boolean fs_enable=false;
             boolean restart  = false;
-            boolean websockisConnected = true;
 };
 
 #endif
