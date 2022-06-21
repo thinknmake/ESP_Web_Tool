@@ -375,6 +375,8 @@ void  ESP_Webtool::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   delay(1000);
 }
 
+#endif
+
 void ESP_Webtool::handleFileDelete(String path) {
   
   if (!exists(path)) {
@@ -393,4 +395,3 @@ bool ESP_Webtool::exists(String path){
   file.close();
   return yes;
 }
-#endif
