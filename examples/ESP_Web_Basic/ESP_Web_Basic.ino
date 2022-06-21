@@ -8,36 +8,38 @@
 #include "ESP_Web_Tool.h"
 
 #define     LED         2
+#define     UDATE_TIME  1000
 
 const char* hssid       = "xxxxxxxxxxxx";
 const char* hpassword   = "000000000000";
 
 const char* ssid1       = "ESP32Server";
 const char* password1   = "n1234567890";
-long        lastmillis  = 0;
-long        blink_delay = 1000;
-int counter             = 0;
+
+long        lastupdate  = 0;
+int         counter     = 0;
+
 ESP_Webtool   tool;
 
 void setup(){
     Serial.begin(115200); // Used for messages and the C array generator
     delay(100);
     Serial.println("ESP WebTool test!");
-    Serial.println("Setup"); 
+    Serial.println("Setup Started"); 
     setup_wifi();
+    tool.enableDebug(true);
     tool.setup();
     tool.setCallback(tool_callback);
     pinMode(LED, OUTPUT);    
-    Serial.println("Loop");
-    tool.listFiles();
+    Serial.println("Entering Loop");
 }
 
 void loop(){
     tool.loop();
-    if(millis()-lastmillis > blink_delay){
+    if(millis()- lastupdate > UDATE_TIME){
         digitalWrite(LED, !digitalRead(LED));
         logs("Board LED " +String(digitalRead(LED)?"OFF":"ON ") + " Request: " +String(counter++));
-        lastmillis = millis();
+        lastupdate = millis();
     }
 }
 
@@ -73,6 +75,6 @@ void logs(String log_str){
 }
 
 void tool_callback(uint8_t* payload,unsigned int len){
-  Serial.println("In Main Code");
+  Serial.println("Tool CallBack");
   Serial.println((char*)payload);
 }

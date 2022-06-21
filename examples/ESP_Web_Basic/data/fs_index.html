@@ -229,25 +229,18 @@ function onClose(evt) {
 
 // Called when a message is received from the server
 function onMessage(evt) {
-  var filetable= document.getElementById("ftable");
-
-  var tableRows = filetable.getElementsByTagName('tr');
-  var rowCount = tableRows.length;
-
-for (var x=rowCount-1; x>0; x--) {
-  filetable.removeChild(tableRows[x]);
-}
-
-  //console.log(filetable.rows.length);
-  //for (var i = 1; i < filetable.rows.length; i++)
-  //{
-   // filetable.deleteRow(i);
-  //}
-
+    console.log(evt.data);
   try {
       var myObj = JSON.parse(event.data);
       var keys = Object.keys(myObj);
+      var filetable= document.getElementById("ftable");
 
+      var tableRows = filetable.getElementsByTagName('tr');
+      var rowCount = tableRows.length;
+
+      for (var x=rowCount-1; x>0; x--) {
+          filetable.removeChild(tableRows[x]);
+      }
       for (var i = 0; i < keys.length; i++){
           var key = keys[i];
           console.log(myObj[key]);
