@@ -22,7 +22,7 @@
 #endif
 
 #define CALLBACK_SIGNATURE std::function<void(uint8_t*,unsigned int)> callback
-#define VERSION "ESP Web Tools \nDesign By N!lesh M\n Date 19/06/22"
+#define VERSION "ESP Web Tools \nDesign By N!lesh M\nDate :19/06/22"
 #define MAX_CLIENT 5
 class ESP_Webtool
 {
@@ -37,6 +37,7 @@ class ESP_Webtool
             ESP_Webtool& setCallback(CALLBACK_SIGNATURE);
             void update_page(void);
             void terminal_page(void);
+            void fs_page(void);
             void notFound(void);
             String getContentType(String filename);
             bool handleFileRead(String path);
@@ -44,6 +45,8 @@ class ESP_Webtool
             void handleUpload(void);
             void onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * payload,size_t length);
             void listFiles(void);
+            void handleFileDelete(String path);
+            bool exists(String path);
             void enableDebug(boolean debug);
             void logs(String log_str);
             File fsUploadFile;
@@ -52,7 +55,7 @@ class ESP_Webtool
             void  listDir(fs::FS &fs, const char * dirname, uint8_t levels);
     #endif
             boolean debug = false;    
-
+            String fileslist;     
     protected:
     #ifdef ESP8266
             ESP8266WebServer server;

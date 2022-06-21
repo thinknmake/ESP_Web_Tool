@@ -7,6 +7,7 @@ ESP_Webtool::ESP_Webtool():server(80){
   webSocket = new WebSocketsServer(1337);
   setCallback(NULL);
   server.on("/ota", HTTP_GET,std::bind(&ESP_Webtool::update_page,this));
+  server.on("/fs", HTTP_GET,std::bind(&ESP_Webtool::fs_page,this));
   server.on("/terminal", HTTP_GET,std::bind(&ESP_Webtool::terminal_page,this));
   server.on("/update", HTTP_POST, std::bind(&ESP_Webtool::uploadResp,this),std::bind(&ESP_Webtool::handleUpload,this));
   server.onNotFound(std::bind(&ESP_Webtool::notFound,this));
@@ -17,6 +18,7 @@ ESP_Webtool::ESP_Webtool(uint16_t port,uint16_t port1):server(port){
   webSocket = new WebSocketsServer(port1);
   setCallback(NULL);
   server.on("/ota", HTTP_GET,std::bind(&ESP_Webtool::update_page,this));
+  server.on("/fs", HTTP_GET,std::bind(&ESP_Webtool::fs_page,this));
   server.on("/terminal", HTTP_GET,std::bind(&ESP_Webtool::terminal_page,this));
   server.on("/update", HTTP_POST, std::bind(&ESP_Webtool::uploadResp,this),std::bind(&ESP_Webtool::handleUpload,this));
   server.onNotFound(std::bind(&ESP_Webtool::notFound,this));
@@ -59,6 +61,7 @@ void ESP_Webtool::print(String logs){
 void ESP_Webtool::onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * payload,size_t length) 
 {
   // Figure out the type of WebSocket event
+  String      message     = "";
   switch(type) {
     // Client has disconnected
     case WStype_DISCONNECTED:
@@ -81,7 +84,22 @@ void ESP_Webtool::onWebSocketEvent(uint8_t client_num, WStype_t type,uint8_t * p
     // Handle text messages from client
     case WStype_TEXT:
       // Print out raw message
+      
       logs("Client :"+String( client_num) + " Received text: " + String((char*)payload));
+      payload[length] = 0;
+      message = (char*)payload;
+      if (message.indexOf("delete_") >= 0) {
+          String file_name =  message.substring(7);
+          logs(file_name);
+          handleFileDelete(file_name);
+          listFiles();
+          print(fileslist);
+      }
+      if (strcmp((char*)payload, "getFiles") == 0) {
+        //notifyClients(getSliderValues());
+        listFiles();
+        print(fileslist);
+      }
       if (callback) {
           callback(payload,length);
       }
@@ -179,6 +197,17 @@ void ESP_Webtool::terminal_page(void) {
   }
 }
 
+void ESP_Webtool::fs_page(void) {  
+  String path = "/fs_index.html";
+  if (SPIFFS.exists(path)) {                            // If the file exists
+    File file = SPIFFS.open(path, "r");                 // Open it
+    size_t sent = server.streamFile(file, "text/html"); // And send it to the client
+    file.close();                                       // Then close the file again
+  }else{
+    logs("\tFile Not Found");
+  }
+}
+
 void ESP_Webtool::handleUpload(void){  
     
     HTTPUpload& upload = server.upload();
@@ -253,7 +282,8 @@ void  ESP_Webtool::listFiles(void) {
   logs(line);
   logs("  File name               Size");
   logs(line);
-
+   fileslist = "[";
+  int i=0;
   while (dir.next()) {
     String fileName = dir.fileName();
     Serial.print(fileName);
@@ -265,10 +295,15 @@ void  ESP_Webtool::listFiles(void) {
     spaces = 10 - fileSize.length(); // Tabulate nicely
     while (spaces--) Serial.print(" ");
     logs(fileSize + " bytes");
+     if(i==0)
+        fileslist += "{\"fname\":\""+ fileName+"\",\"fsize\":\""+fileSize+"\"}";
+      else
+        fileslist += ",{\"fname\":\""+ fileName+"\",\"fsize\":\""+fileSize+"\"}";
+      i++;
   }
-
+ fileslist += "]";
   logs(line);
- logs("\n");
+  logs("\n");
   delay(1000);
 }
 #endif
@@ -302,7 +337,8 @@ void  ESP_Webtool::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
     logs("Not a directory");
     return;
   }
-
+  fileslist = "[";
+  int i=0;
   fs::File file = root.openNextFile();
   while (file) {
 
@@ -323,13 +359,38 @@ void  ESP_Webtool::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
       spaces = 10 - fileSize.length(); // Tabulate nicely
       while (spaces--) Serial.print(" ");
       logs(fileSize + " bytes");
+      if(i==0)
+        fileslist += "{\"fname\":\""+ fileName+"\",\"fsize\":\""+fileSize+"\"}";
+      else
+        fileslist += ",{\"fname\":\""+ fileName+"\",\"fsize\":\""+fileSize+"\"}";
+      i++;
     }
-
+    
     file = root.openNextFile();
   }
 
+  fileslist += "]";
   logs(line);
- logs("\n");
+  logs("\n");
   delay(1000);
+}
+
+void ESP_Webtool::handleFileDelete(String path) {
+  
+  if (!exists(path)) {
+    return print("FileNotFound");
+  }
+
+  SPIFFS.remove(path);
+}
+
+bool ESP_Webtool::exists(String path){
+  bool yes = false;
+  File file = SPIFFS.open(path, "r");
+  if(!file.isDirectory()){
+    yes = true;
+  }
+  file.close();
+  return yes;
 }
 #endif
