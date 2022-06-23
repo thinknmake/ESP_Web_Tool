@@ -29,10 +29,10 @@ void ESP_Webtool::setup(){
   server.begin();   
   webSocket->begin();
   webSocket->onEvent(std::bind(&ESP_Webtool::onWebSocketEvent,this,_1,_2,_3,_4));
-  if (!SPIFFS.begin()) {
+  if (!SPIFFS.begin(true)) {
       logs("SPIFFS initialisation failed!");
   }
-  logs(VERSION);
+  logs(ESP_WEB_TOOL_VERSION);
 } 
 
 void ESP_Webtool::enableDebug(boolean debug){

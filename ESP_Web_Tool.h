@@ -22,8 +22,9 @@
 #endif
 
 #define CALLBACK_SIGNATURE std::function<void(uint8_t*,unsigned int)> callback
-#define VERSION "ESP Web Tools \nDesign By N!lesh M\nDate :19/06/22"
+#define ESP_WEB_TOOL_VERSION "ESP Web Tools \nDesign By N!lesh M\nDate :19/06/22"
 #define MAX_CLIENT 5
+
 class ESP_Webtool
 {
         public: 
