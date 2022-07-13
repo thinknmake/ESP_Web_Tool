@@ -8,6 +8,7 @@ ESP_Webtool::ESP_Webtool():server(80){
   setCallback(NULL);
   server.on("/ota", HTTP_GET,std::bind(&ESP_Webtool::update_page,this));
   server.on("/fs", HTTP_GET,std::bind(&ESP_Webtool::fs_page,this));
+  server.on("/wifi", HTTP_GET,std::bind(&ESP_Webtool::wifi_page,this));
   server.on("/terminal", HTTP_GET,std::bind(&ESP_Webtool::terminal_page,this));
   server.on("/update", HTTP_POST, std::bind(&ESP_Webtool::uploadResp,this),std::bind(&ESP_Webtool::handleUpload,this));
   server.onNotFound(std::bind(&ESP_Webtool::notFound,this));
@@ -19,6 +20,7 @@ ESP_Webtool::ESP_Webtool(uint16_t port,uint16_t port1):server(port){
   setCallback(NULL);
   server.on("/ota", HTTP_GET,std::bind(&ESP_Webtool::update_page,this));
   server.on("/fs", HTTP_GET,std::bind(&ESP_Webtool::fs_page,this));
+  server.on("/wifi", HTTP_GET,std::bind(&ESP_Webtool::wifi_page,this));
   server.on("/terminal", HTTP_GET,std::bind(&ESP_Webtool::terminal_page,this));
   server.on("/update", HTTP_POST, std::bind(&ESP_Webtool::uploadResp,this),std::bind(&ESP_Webtool::handleUpload,this));
   server.onNotFound(std::bind(&ESP_Webtool::notFound,this));
@@ -29,7 +31,8 @@ void ESP_Webtool::setup(){
   server.begin();   
   webSocket->begin();
   webSocket->onEvent(std::bind(&ESP_Webtool::onWebSocketEvent,this,_1,_2,_3,_4));
-  if (!SPIFFS.begin(true)) {
+  //if (!SPIFFS.begin(true)) {
+  if (!SPIFFS.begin()) {  
       logs("SPIFFS initialisation failed!");
   }
   logs(ESP_WEB_TOOL_VERSION);
@@ -173,6 +176,17 @@ void ESP_Webtool::uploadResp(void) {
   if(restart){
     ESP.restart();
   }  
+}
+
+void ESP_Webtool::wifi_page(void) {  
+  String path = "/wifi_setup.html";
+  if (SPIFFS.exists(path)) {                            // If the file exists
+    File file = SPIFFS.open(path, "r");                 // Open it
+    size_t sent = server.streamFile(file, "text/html"); // And send it to the client
+    file.close();                                       // Then close the file again
+  }else{
+    logs("\tFile Not Found");
+  }
 }
 
 void ESP_Webtool::update_page(void) {  
@@ -377,13 +391,16 @@ void  ESP_Webtool::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
 
 #endif
 
-void ESP_Webtool::handleFileDelete(String path) {
-  
-  if (!exists(path)) {
+void ESP_Webtool::handleFileDelete(String filename) {
+  if (!filename.startsWith("/")) {
+    filename = "/" + filename;
+  }
+
+  if (!exists(filename)) {
     return print("FileNotFound");
   }
 
-  SPIFFS.remove(path);
+  SPIFFS.remove(filename);
 }
 
 bool ESP_Webtool::exists(String path){

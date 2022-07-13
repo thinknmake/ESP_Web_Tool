@@ -39,6 +39,7 @@ class ESP_Webtool
             void update_page(void);
             void terminal_page(void);
             void fs_page(void);
+            void wifi_page(void);
             void notFound(void);
             String getContentType(String filename);
             bool handleFileRead(String path);
